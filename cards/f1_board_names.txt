@@ -1,0 +1,40 @@
+0:Start Line
+1:Albert Park Circuit
+2:Technical Inspection
+3:Monaco Grand Prix
+4:Penalty for Exceeding Track Limits
+5:Scuderia Ferrari HQ
+6:Spa-Francorchamps
+7:Team Strategy
+8:Monza Circuit
+9:Marina Bay Street Circuit
+10:Pit Lane/ Stewards
+11:Interlagos Circuit
+12:Pirelli Tyre Provider
+13:Red Bull Ring
+14:Circuit de Barcelona-Catalunya
+15:Mercedes AMG Petronas HQ
+16:Yas Marina Circuit
+17:Technical Inspection
+18:Autodromo Hermanos Rodriguez
+19:Sochi Autodrom
+20:Free Pit Stop
+21:Zandvoort Circuit
+22:Team Strategy
+23:Imola Circuit
+24:Baku City Circuit
+25:McLaren Technology Centre
+26:Circuit of the Americas
+27:Hockenheimring
+28:Shell Fuel Supplier
+29:Suzuka Circuit
+30:Go to Stewards
+31:Losail International Circuit
+32:Miami Grand Prix
+33:Technical Inspection
+34:Las Vegas Grand Prix
+35:Williams Racing HQ
+36:Team Strategy
+37:Circuit Gilles Villeneuve
+38:Penalty for Unsafe Driving
+39:Abu Dhabi Grand Prix

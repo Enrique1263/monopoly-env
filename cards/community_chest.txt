@@ -1,0 +1,24 @@
+Advance to Go (Collect $200)|200|False|0
+Bank error in your favor. Collect $200|200|False|0
+Doctor's fees. Pay $50|50|False|0
+From sale of stock you get $50|50|False|0
+Get Out of Jail Free|0|False|0
+Go to Jail. Go directly to jail, do not pass Go, do not collect $200|0|False|10
+Grand Opera Night. Collect $50 from every player for opening night seats|50|True|0
+Holiday Fund matures. Receive $100|100|False|0
+Income tax refund. Collect $20|20|False|0
+It is your birthday. Collect $10 from every player|10|True|0
+Life insurance matures. Collect $100|100|False|0
+Hospital Fees. Pay $100|100|False|0
+School fees. Pay $50|50|False|0
+Receive $25 consultancy fee|25|False|0
+You are assessed for street repairs. $40 per house. $115 per hotel|0|False|0
+You have won second prize in a beauty contest. Collect $10|10|False|0
+You inherit $100|100|False|0
+Dental fees. Pay $75|75|False|0
+Collect $150 as a Christmas bonus|150|False|0
+Receive $50 for services|50|False|0
+Pay $20 for each house and $100 for each hotel you own|0|False|0
+Receive $100 from sale of stock|100|False|0
+You find $20 on the street. Collect $20|20|False|0
+Pay hospital fees of $100|100|False|0

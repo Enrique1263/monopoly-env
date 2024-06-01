@@ -1,0 +1,21 @@
+Advance to Go (Collect $200)|200|False|0
+Advance to Trafalgar Square. If you pass Go, collect $200|200|False|24
+Advance to Mayfair|0|False|39
+Advance to Pall Mall. If you pass Go, collect $200|200|False|11
+Go back three spaces|0|False|0
+Go to jail. Go directly to Jail, do not pass Go, do not collect $200|0|False|10
+Make general repairs on all your property. For each house pay $25. For each hotel pay $100|0|False|0
+Pay poor tax of $15|15|False|0
+Take a trip to Marylebone Station and if you pass Go collect $200|200|False|15
+Take a walk on the Boardwalk. Advance token to Boardwalk|0|False|39
+You have been elected Chairman of the Board. Pay each player $50|50|True|0
+Your building loan matures. Receive $150|150|False|0
+Bank pays you dividend of $50|50|False|0
+Get out of Jail Free|0|False|0
+Go back to Old Kent Road|0|False|1
+Advance to King's Cross Station. If you pass Go, collect $200|200|False|5
+Pay school fees of $150|150|False|0
+Speeding fine $15|15|False|0
+You have won a crossword competition. Collect $100|100|False|0
+Your insurance premium is due. Pay $50|50|False|0
+Sell your stock. Collect $50|50|False|0
