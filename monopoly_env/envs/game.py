@@ -41,6 +41,7 @@ class MonopolyEnv(gym.Env):
         self.board_names_path = board_names_path
         self.community_chest_path = community_chest_path
         self.chance_path = chance_path
+        metadata = {'render.modes': ['human']}
 
         self.observation_space = spaces.Box(low=-1, high=self.num_players, shape=(8,), dtype=np.int32)
         self.observation = [[-2]+[-1]+[-2]+[-1]+[0]+[-1]*2+[-2]+[-1]*2+[-2]+[-1]*6+[-2]+[-1]*2+[-2]+[-1]+[-2]+[-1]*7+[-2]+[-1]*2+[-2]+[-1]*2+[-1]+[-1]+[0]+[-1] , [0 for _ in range(self.num_players)], [1500 for _ in range(self.num_players)],
@@ -108,7 +109,7 @@ class MonopolyEnv(gym.Env):
         self.star_order()
         for i, player in enumerate(self.players):
             player.order = i
-            print(f'Player {player.name} es el jugador {player.order}')
+            print(f"{player.name}'s order is {player.order}")
         self.player_on_turn = 0
         dices, dobles = self.roll_dice()
         self.on_double = dobles
@@ -117,9 +118,9 @@ class MonopolyEnv(gym.Env):
 
         self.dices = dices
         self.render(self.render_mode)
-        print(f'Player {self.player_on_turn} ha caído en la casilla {self.board[self.observation[self.POSITIONS][self.player_on_turn]]}')
+        print(f'{self.players[self.player_on_turn].name} landed on {self.board[self.observation[self.POSITIONS][self.player_on_turn]]}')
         
-        return self.observation, 0, False, False, {}
+        return self.observation, {}
     
     def roll_dice(self):
         # Simulate the roll of two dice and return the result
@@ -173,7 +174,7 @@ class MonopolyEnv(gym.Env):
                 self.observation[self.BANKRUPT][player] = True
                 self.reset_properties(player)
                 self.players[player].color = (0, 0, 0)
-                print(f'Player {player} ha caído en bancarrota por no poder pagar la casilla {self.board[position]}')
+                print(f'{self.players[player].name} is in bankrupt because of tile {self.board[position]}')
                 # No players left, end game
                 if len([player for player in self.observation[self.BANKRUPT] if not player]) == 1:
                     if self.render_mode == 'Human':
@@ -239,7 +240,7 @@ class MonopolyEnv(gym.Env):
                 self.observation[self.BANKRUPT][player] = True
                 self.reset_properties(player)
                 self.players[player].color = (0, 0, 0)
-                print(f'Player {player} ha caído en bancarrota por no poder pagar el alquiler de la casilla {self.board[position]} al jugador {owner}')
+                print(f"{self.players[player].name} is in bankrupt for paying {self.board[position]}'s rent to {self.players[owner].name}")
                 # No players left, end game
                 if len([player for player in self.observation[self.BANKRUPT] if not player]) == 1:
                     if self.render_mode == 'Human':
@@ -247,7 +248,6 @@ class MonopolyEnv(gym.Env):
                     return self.observation, reward, True, False, {}
 
         if not self.on_double or self.observation[self.JAIL_TURNS][player] > 0:
-            # print(f'Player {player} ha terminado su turno, dinero restante: {self.observation[self.MONEY][player]}')
             # Pass turn to the next player, skipping bankrupt players
             self.player_on_turn = (self.player_on_turn + 1) % self.num_players
             while self.observation[self.BANKRUPT][self.player_on_turn]:
@@ -255,7 +255,7 @@ class MonopolyEnv(gym.Env):
         elif self.on_double:
             self.turns_on_double += 1
             if self.turns_on_double == 3:
-                print(f'Player {player} ha sacado dobles 3 veces seguidas, va a la cárcel')
+                print(f'{self.players[player].name} rolled three doubles, goes to jail')
                 self.observation[self.JAIL_TURNS][player] = 3
                 self.observation[self.POSITIONS][player] = 10
                 self.on_double = False
@@ -294,7 +294,7 @@ class MonopolyEnv(gym.Env):
 
         self.dices = dices
         self.render(self.render_mode)
-        print(f'Player {self.player_on_turn} ha caído en la casilla {self.board[self.observation[self.POSITIONS][self.player_on_turn]]}')
+        print(f'{self.players[self.player_on_turn].name} landed on {self.board[self.observation[self.POSITIONS][self.player_on_turn]]}')
 
         self.steps_done += 1
         if self.steps_done >= self.max_steps:

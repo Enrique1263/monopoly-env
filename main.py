@@ -40,7 +40,7 @@ if __name__ == '__main__':
     players_classes = find_subclasses('agents', Player)
     players = [clazz() for clazz in players_classes]
     env = gym.make('MonopolyEnv-v0',players=players, render_mode='Human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards/chance.txt')
-    observation, _,_,_,_ = env.reset()
+    observation, _ = env.reset()
     done = False
     while not done:
         action = env.players[env.player_on_turn].action(observation)
