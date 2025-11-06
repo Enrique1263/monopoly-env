@@ -2,7 +2,7 @@ from player import Player
 import numpy as np
 
 class Randy1(Player):
-    def __init__(self, name='Randy1', color=(0, 255, 0)):
+    def __init__(self, name='Randy2', color=(0, 255, 0)):
         """
         Constructor actualizado para permitir cambiar el nombre y color
         si se instancia directamente.

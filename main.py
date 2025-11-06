@@ -39,7 +39,7 @@ def find_subclasses(path: str, cls: Type[Player]):
 if __name__ == '__main__':
     players_classes = find_subclasses('agents', Player)
     players = [clazz() for clazz in players_classes]
-    env = gym.make('MonopolyEnv-v0',players=players, render_mode='Human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards/chance.txt')
+    env = gym.make('MonopolyEnv-v0',players=players, render_mode='Human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards/chance.txt', hard_rules=False)
     observation, info = env.reset()
     
     done = False

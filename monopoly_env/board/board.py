@@ -48,25 +48,42 @@ class Board:
         text = font.render(f'{player_name}: {str(dices)}', True, players[player].color)  # Texto fijo para representar al jugador
         text_rect = text.get_rect(center=(self.screen_width / 2, self.screen_height / 2))
         screen.blit(text, text_rect)
+        
         cell_width = self.board_width / (self.num_cells + 1)
         cell_height = self.board_height / (self.num_cells + 1)
-        # Text to show the money of each player
+        
         font = pygame.font.Font(None, 36)
-        text = font.render(f'Money: {observation[2][2]}', True, players[2].color)
-        text_rect = text.get_rect(center=(self.board_width * 5/16, self.screen_height - self.board_height / 8))
-        screen.blit(text, text_rect)
-        text = font.render(f'Money: {observation[2][1]}', True, players[1].color)
-        text_rect = text.get_rect(center=(self.screen_width * 3/4, self.screen_height / 8))
-        screen.blit(text, text_rect)
-        text = font.render(f'Money: {observation[2][0]}', True, players[0].color)
-        text_rect = text.get_rect(center=(self.board_width * 5/16, self.screen_height / 8))
-        screen.blit(text, text_rect)
-        text = font.render(f'Money: {observation[2][3]}', True, players[3].color)
-        text_rect = text.get_rect(center=(self.screen_width * 3/4, self.screen_height - self.board_height / 8))
-        screen.blit(text, text_rect)
-        for i, player in enumerate(players):
-            position = observation[1][i]
-            color = player.color
+        num_players_total = len(players) # Obtenemos el número real de jugadores
+
+        # Posiciones fijas de la UI para el dinero de cada jugador
+        ui_positions = [
+            (self.board_width * 5/16, self.screen_height / 8),                          # Jugador 0 (Top-Left)
+            (self.screen_width * 3/4, self.screen_height / 8),                          # Jugador 1 (Top-Right)
+            (self.board_width * 5/16, self.screen_height - self.board_height / 8),     # Jugador 2 (Bottom-Left)
+            (self.screen_width * 3/4, self.screen_height - self.board_height / 8)       # Jugador 3 (Bottom-Right)
+        ]
+        
+        # Recorremos los jugadores que realmente existen
+        for i in range(num_players_total):
+            # Comprobamos que el jugador y sus datos existan (buena práctica)
+            if i < len(players) and i < len(observation[2]):
+                
+                money = observation[2][i] # observation[2] es la lista de MONEY
+                color = players[i].color
+                
+                # Si el color es negro (bancarrota), mostramos el texto en gris
+                if color == (0, 0, 0):
+                    text_color = (150, 150, 150)
+                else:
+                    text_color = color
+                
+                text = font.render(f'Money: {money}', True, text_color)
+                text_rect = text.get_rect(center=ui_positions[i])
+                screen.blit(text, text_rect)
+        
+        for i, player_obj in enumerate(players):
+            position = observation[1][i] # observation[1] es POSITIONS
+            color = player_obj.color
             x, y = self.position_coordinates[position]
             if i == 1:
                 x += cell_width / 2
@@ -74,9 +91,8 @@ class Board:
                 y += cell_height / 2
             elif i == 3:
                 x += cell_width / 2
-                y += cell_height / 2
+                y += cell_height / 2       
             pygame.draw.circle(screen, color, (int(x), int(y)), 10)
 
     def shut_down(self):
         pygame.quit()
-

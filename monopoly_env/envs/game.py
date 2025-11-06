@@ -7,7 +7,7 @@ import pygame
 from typing import List, Dict, Any
 
 # --- Importamos las clases reales ---
-from board import Board
+from monopoly_env.board.board import Board
 from player import Player
 # --- Fin de Imports ---
 
@@ -32,12 +32,12 @@ board = Board(SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_WIDTH, BOARD_HEIGHT, NUM_CELLS)
 
 
 class MonopolyEnv(gym.Env):
-    def __init__(self, players: List[Player], max_steps=1000, render_mode='Human', board_names_path='cards/board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards.txt'):
+    def __init__(self, players: List[Player], max_steps=1000, render_mode='Human', board_names_path='cards/board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards.txt', hard_rules=False):
         
         ### MODIFICADO: Definiciones de Observación y Acción ###
         
         self.num_players = len(players)
-        
+        self.hard_rules = hard_rules
         # --- Action Space (Espacio de Acciones) ---
         # SIMPLIFICADO: Eliminada la hipoteca (acciones 41-80)
         # 0: No-op / Terminar turno (o pagar fianza si está en la cárcel)
@@ -112,8 +112,39 @@ class MonopolyEnv(gym.Env):
         self.JAIL_TURNS = 6 # Turnos cárcel
         self.BANKRUPT = 7   # Bancarrota
         self.GET_OUT_OF_JAIL = 8 # Cartas cárcel
+        self.PROPERTY_GROUPS = {
+            1: {"group": "brown", "tiles": [1, 3]},
+            3: {"group": "brown", "tiles": [1, 3]},
+            
+            6: {"group": "light_blue", "tiles": [6, 8, 9]},
+            8: {"group": "light_blue", "tiles": [6, 8, 9]},
+            9: {"group": "light_blue", "tiles": [6, 8, 9]},
+            
+            11: {"group": "pink", "tiles": [11, 13, 14]},
+            13: {"group": "pink", "tiles": [11, 13, 14]},
+            14: {"group": "pink", "tiles": [11, 13, 14]},
+            
+            16: {"group": "orange", "tiles": [16, 18, 19]},
+            18: {"group": "orange", "tiles": [16, 18, 19]},
+            19: {"group": "orange", "tiles": [16, 18, 19]},
+            
+            21: {"group": "red", "tiles": [21, 23, 24]},
+            23: {"group": "red", "tiles": [21, 23, 24]},
+            24: {"group": "red", "tiles": [21, 23, 24]},
+            
+            26: {"group": "yellow", "tiles": [26, 27, 29]},
+            27: {"group": "yellow", "tiles": [26, 27, 29]},
+            29: {"group": "yellow", "tiles": [26, 27, 29]},
+            
+            31: {"group": "green", "tiles": [31, 32, 34]},
+            32: {"group": "green", "tiles": [31, 32, 34]},
+            34: {"group": "green", "tiles": [31, 32, 34]},
+            
+            37: {"group": "dark_blue", "tiles": [37, 39]},
+            39: {"group": "dark_blue", "tiles": [37, 39]},
+        }
         
-        self.initial_money = 1500.0
+        self.initial_money = 1500
         self.net_worths = [self.initial_money] * self.num_players
 
         self.players = players
@@ -189,6 +220,23 @@ class MonopolyEnv(gym.Env):
                     net_worth += build_level * coste_edificio
         
         return net_worth
+    
+    def _has_monopoly(self, player_id, group_tiles):
+        """Comprueba si un jugador tiene todas las propiedades de un grupo."""
+        for tile_index in group_tiles:
+            if self.game_state[self.PROPERTIES][tile_index] != player_id:
+                return False
+        return True
+
+    def _get_min_build_level(self, group_tiles):
+        """Encuentra el nivel de construcción más bajo en un grupo (para construir uniformemente)."""
+        min_level = 6 # Más alto que el hotel (5)
+        for tile_index in group_tiles:
+            level = self.game_state[self.BUILDINGS][tile_index]
+            # Nos aseguramos de que sea un nivel de construcción (0-5)
+            if 0 <= level <= 5:
+                min_level = min(min_level, level)
+        return min_level
 
     def _get_obs(self):
         """
@@ -220,10 +268,6 @@ class MonopolyEnv(gym.Env):
         return obs
 
     def _get_action_mask(self):
-        """
-        NUEVA FUNCIÓN: Devuelve un array booleano de acciones válidas.
-        ¡¡MODIFICADO!!: Eliminada la lógica de hipoteca.
-        """
         mask = np.zeros(self.action_space.n, dtype=bool)
         player = self.player_on_turn
         pos = self.game_state[self.POSITIONS][player]
@@ -232,13 +276,46 @@ class MonopolyEnv(gym.Env):
         mask[0] = True
         
         # 1-40: Edificar
+        checked_groups = set() # Para no comprobar el monopolio 3 veces
         for i in range(NUM_BOARD_TILES):
-            # TODO: Añadir lógica de monopolio (solo se puede edificar si se tiene el grupo)
-            # if self._check_monopoly(player, i):
-                if self.game_state[self.PROPERTIES][i] == player and \
-                   self.game_state[self.BUILDINGS][i] < 5 and \
-                   self.game_state[self.MONEY][player] >= self.game_state[self.EDIFICATE][i // 10]:
-                    mask[1 + i] = True
+            # Comprobación 1: ¿Es una casilla edificable?
+            if i not in self.PROPERTY_GROUPS:
+                continue
+            
+            # Comprobación 2: ¿La posee el jugador?
+            if self.game_state[self.PROPERTIES][i] == player:
+                group_info = self.PROPERTY_GROUPS[i]
+                group_name = group_info["group"]
+                
+                if self.hard_rules:
+                    # Solo procesamos cada grupo de color una vez
+                    if group_name not in checked_groups:
+                        checked_groups.add(group_name)
+                        group_tiles = group_info["tiles"]
+                        
+                        # Comprobación 3: ¿Tiene el monopolio?
+                        if self._has_monopoly(player, group_tiles):
+                            # Comprobación 4: Regla de construir uniformemente
+                            min_level = self._get_min_build_level(group_tiles)
+                            
+                            # Si el nivel mínimo es 5 (hotel), no se puede construir más en este grupo
+                            if min_level == 5:
+                                continue
+                                
+                            # Si tiene monopolio, puede construir en *todas* las casillas 
+                            # que tengan el nivel de construcción mínimo
+                            for tile_index in group_tiles:
+                                if self.game_state[self.BUILDINGS][tile_index] == min_level:
+                                    # Comprobación 5: ¿Tiene dinero?
+                                    cost = self.game_state[self.EDIFICATE][tile_index // 10]
+                                    if self.game_state[self.MONEY][player] >= cost:
+                                        mask[1 + tile_index] = 1 # ¡Acción Válida!
+                else:
+                    # Modo sencillo: Solo comprobar si puede edificar en esta casilla
+                    if self.game_state[self.BUILDINGS][i] < 5:
+                        cost = self.game_state[self.EDIFICATE][i // 10]
+                        if self.game_state[self.MONEY][player] >= cost:
+                            mask[1 + i] = True
         
         # 41: Comprar (re-indexado desde 81)
         owner = self.game_state[self.PROPERTIES][pos]
@@ -282,11 +359,31 @@ class MonopolyEnv(gym.Env):
             
         # Tu lógica de reseteo
         self.game_state = [
-            [-2]+[-1]+[-2]+[-1]+[-2]+[-1]*2+[-2]+[-1]*2+[-2]+[-1]*6+[-2]+[-1]*2+[-2]+[-1]+[-2]+[-1]*7+[-2]+[-1]*2+[-2]+[-1]*2+[-2]+[-1]+[-2]+[-1], # PROPERTIES
-            [0] * self.num_players, # POSITIONS
-            [self.initial_money] * self.num_players, # MONEY
-            [0] * self.num_players, # BANKRUPT
-            [0] * self.num_players  # GET_OUT_OF_JAIL
+            # 0: PROPERTIES
+            [-2]+[-1]+[-2]+[-1]+[-2]+[-1]*2+[-2]+[-1]*2+[-2]+[-1]*6+[-2]+[-1]*2+[-2]+[-1]+[-2]+[-1]*7+[-2]+[-1]*2+[-2]+[-1]*2+[-2]+[-1]+[-2]+[-1],
+            # 1: POSITIONS
+            [0] * self.num_players,
+            # 2: MONEY
+            [self.initial_money] * self.num_players,
+            # 3: PRICES (Copiado de tu v1)
+            [[200], [-2, -10, -30, -90, -160, -250, -60], [0], [-4, -20, -60, -180, -320, -450, -60], [-200], [-25, -50, -100, -200, -200],
+             [-6, -30, -90, -270, -400, -550, -100], [0], [-6, -30, -90, -270, -400, -550, -100], 
+             [-8, -40, -100, -300, -450, -600, -120], [0], [-10, -50, -150, -450, -625, -750, -140], [-4, -10, -150], [-10, -50, -150, -450, -625, -750, -140],
+             [-12, -60, -180, -500, -700, -900, -160], [-25, -50, -100, -200, -200], [-14, -70, -200, -550, -750, -950, -180], [0], [-14, -70, -200, -550, -750, -950, -180],
+             [-16, -80, -220, -600, -800, -1000, -200], [0], [-18, -90, -250, -700, -875, -1050, -220], [0], [-18, -90, -250, -700, -875, -1050, -220],
+             [-20, -100, -300, -750, -925, -1100, -240], [-25, -50, -100, -200, -200], [-22, -110, -330, -800, -975, -1150, -260], [-22, -110, -330, -800, -975, -1150, -260], [-4, -10, -150],
+             [-24, -120, -360, -850, -1025, -1200, -280], [0], [-26, -130, -390, -900, -1100, -1275, -300], [-26, -130, -390, -900, -1100, -1275, -300], [0],
+             [-28, -150, -450, -1000, -1200, -1400, -320], [-25, -50, -100, -200, -200], [0], [-35, -175, -500, -1100, -1300, -1500, -350], [-100], [-50, -200, -600, -1400, -1700, -2000, -400]],
+            # 4: EDIFICATE
+            [50, 100, 150, 200],
+            # 5: BUILDINGS
+            [-2 if i in {0, 2, 4, 7, 10, 17, 20, 22, 30, 33, 36, 38} else -1 for i in range(40)],
+            # 6: JAIL_TURNS
+            [0] * self.num_players,
+            # 7: BANKRUPT
+            [False] * self.num_players,
+            # 8: GET_OUT_OF_JAIL
+            [0] * self.num_players
         ]
         
         ### NUEVO: Barajamos las cartas ###
@@ -581,7 +678,7 @@ class MonopolyEnv(gym.Env):
             # Usamos la nueva función
             self._check_bankruptcy(player)
             terminal_reward = -500.0 # Penalización MUY grande por bancarrota
-            terminated = True
+            # terminated = True
 
 
         # 3. Avanzar turno
@@ -645,12 +742,12 @@ class MonopolyEnv(gym.Env):
                 self.game_state[self.MONEY][next_player] += 200
 
             # 5. Resolver caída en casilla (pagar alquileres, etc.)
-            self._resolve_land_on_tile(next_player)
             print(f'{self.players[next_player].name} landed on {self.board_names[new_pos]}')
+            self._resolve_land_on_tile(next_player)
             
             # La bancarrota ya se comprueba dentro de _resolve_land_on_tile
-            if self.game_state[self.BANKRUPT][next_player]:
-                terminated = True # Bancarrota por alquiler
+            # if self.game_state[self.BANKRUPT][next_player]:
+            #     terminated = True
         
         
         # 6. Comprobar si hay un ganador
