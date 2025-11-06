@@ -1,5 +1,5 @@
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 import random
 import time
@@ -32,24 +32,20 @@ board = Board(SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_WIDTH, BOARD_HEIGHT, NUM_CELLS)
 
 
 class MonopolyEnv(gym.Env):
-    def __init__(self, players: List[Player], max_steps=1000, render_mode='Human', board_names_path='cards/board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards.txt', hard_rules=False):
-        
-        ### MODIFICADO: Definiciones de Observación y Acción ###
+    metadata = {'render_modes': ['human']}
+
+    def __init__(self, players: List[Player], max_steps=1000, render_mode='human', board_names_path='cards/board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards.txt', hard_rules=False):
         
         self.num_players = len(players)
         self.hard_rules = hard_rules
         # --- Action Space (Espacio de Acciones) ---
-        # SIMPLIFICADO: Eliminada la hipoteca (acciones 41-80)
         # 0: No-op / Terminar turno (o pagar fianza si está en la cárcel)
         # 1-40: Intentar Edificar en la casilla (index 0-39)
         # 41: Intentar Comprar la propiedad (si está en una casilla comprable)
         # 42: Usar carta "Salir de la Cárcel"
-        self.action_space = spaces.Discrete(43) # Reducido de 83 a 43
+        self.action_space = spaces.Discrete(43)
 
-        # --- Observation Space (Espacio de Observación) ---
-        # Tu `self.observation` es una lista compleja. Para DRL, es mejor 
-        # aplanarla en un único vector (Box) y normalizar los valores.
-        
+        # --- Observation Space (Espacio de Observación) ---        
         # Tamaño del vector de observación:
         # 40 (PROPERTIES: dueño de cada una)
         # 40 (BUILDINGS: nivel de edificación)
@@ -57,16 +53,15 @@ class MonopolyEnv(gym.Env):
         # num_players (MONEY: dinero de cada jugador, normalizado)
         # num_players (JAIL_TURNS: turnos en la cárcel)
         # num_players (GET_OUT_OF_JAIL_CARDS: cuántas cartas tiene cada uno)
-        # 1 (PLAYER_ON_TURN: quién tiene el turno)
-        self.obs_vector_size = 40 + 40 + (self.num_players * 4) + 1
+        self.obs_vector_size = 40 + 40 + (self.num_players * 4)
         
         # Definimos los límites (low/high) del Box.
-        low = np.full(self.obs_vector_size, -1.0, dtype=np.float32)
+        low = np.full(self.obs_vector_size, -2.0, dtype=np.float32)
         high = np.full(self.obs_vector_size, 1.0, dtype=np.float32)
         
         # Ajustamos los límites para partes específicas del vector
         start_idx = 0
-        # PROPERTIES (0-39): -1 (sin dueño) a num_players-1 (dueño)
+        # PROPERTIES (0-39): -2 (no edificable) -1 (sin dueño) a num_players-1 (dueño)
         high[start_idx : start_idx + 40] = self.num_players - 1
         start_idx += 40
         # BUILDINGS (40-79): -2 (no edificable) a 5 (hotel)
@@ -78,7 +73,8 @@ class MonopolyEnv(gym.Env):
         high[start_idx : start_idx + self.num_players] = 39
         start_idx += self.num_players
         # MONEY (..-..): 0.0 a 1.0 (normalizado)
-        low[start_idx : start_idx + self.num_players] = 0.0
+        low[start_idx : start_idx + self.num_players] = 0
+        high[start_idx : start_idx + self.num_players] = 20000
         start_idx += self.num_players
         # JAIL_TURNS (..-..): 0 a 3
         low[start_idx : start_idx + self.num_players] = 0
@@ -88,19 +84,12 @@ class MonopolyEnv(gym.Env):
         low[start_idx : start_idx + self.num_players] = 0
         high[start_idx : start_idx + self.num_players] = 4
         start_idx += self.num_players
-        # PLAYER_ON_TURN (..): 0 a num_players-1
-        low[start_idx] = 0
-        high[start_idx] = self.num_players - 1
         
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
-
-        ### FIN MODIFICADO ###
 
         self.board_names_path = board_names_path
         self.community_chest_path = community_chest_path
         self.chance_path = chance_path
-        metadata = {'render.modes': ['human']}
-
         # --- Estado del Juego (self.game_state) ---
         self.game_state = [] 
         self.PROPERTIES = 0 # Quién posee
@@ -148,11 +137,10 @@ class MonopolyEnv(gym.Env):
         self.net_worths = [self.initial_money] * self.num_players
 
         self.players = players
-        self.board_names = self.load_board_names() # Renombrado para no colisionar
+        self.board_names = self.load_board_names()
         self.community_chest_cards = self.load_cards(self.community_chest_path)
         self.chance_cards = self.load_cards(self.chance_path)
         
-        ### NUEVO: Mazos de cartas barajados ###
         self.shuffled_chance_cards = []
         self.shuffled_community_chest_cards = []
         
@@ -205,7 +193,6 @@ class MonopolyEnv(gym.Env):
         for i in range(NUM_BOARD_TILES):
             if self.game_state[self.PROPERTIES][i] == player_id:
                 # Suma el precio de compra de la propiedad
-                # ¡¡CORREGIDO!!: Usamos el último valor de la lista de precios (ej. -60)
                 try:
                     # El precio se almacena como negativo (ej. -60)
                     purchase_price = -self.game_state[self.PRICES][i][-1]
@@ -252,18 +239,14 @@ class MonopolyEnv(gym.Env):
         start_idx += 40
         obs[start_idx : start_idx + self.num_players] = self.game_state[self.POSITIONS]
         start_idx += self.num_players
-        
-        # Normaliza el dinero
-        money_normalized = [m / (self.initial_money + 1e-6) for m in self.game_state[self.MONEY]]
-        obs[start_idx : start_idx + self.num_players] = money_normalized
+         
+        obs[start_idx : start_idx + self.num_players] = self.game_state[self.MONEY]
         start_idx += self.num_players
         
         obs[start_idx : start_idx + self.num_players] = self.game_state[self.JAIL_TURNS]
         start_idx += self.num_players
         obs[start_idx : start_idx + self.num_players] = self.game_state[self.GET_OUT_OF_JAIL]
         start_idx += self.num_players
-        
-        obs[start_idx] = self.player_on_turn
         
         return obs
 
@@ -365,7 +348,7 @@ class MonopolyEnv(gym.Env):
             [0] * self.num_players,
             # 2: MONEY
             [self.initial_money] * self.num_players,
-            # 3: PRICES (Copiado de tu v1)
+            # 3: PRICES
             [[200], [-2, -10, -30, -90, -160, -250, -60], [0], [-4, -20, -60, -180, -320, -450, -60], [-200], [-25, -50, -100, -200, -200],
              [-6, -30, -90, -270, -400, -550, -100], [0], [-6, -30, -90, -270, -400, -550, -100], 
              [-8, -40, -100, -300, -450, -600, -120], [0], [-10, -50, -150, -450, -625, -750, -140], [-4, -10, -150], [-10, -50, -150, -450, -625, -750, -140],
@@ -393,10 +376,6 @@ class MonopolyEnv(gym.Env):
         random.shuffle(self.shuffled_community_chest_cards)
         
         self.net_worths = [self._calculate_net_worth(i) for i in range(self.num_players)]
-        
-        self.star_order()
-        for i, player in enumerate(self.players):
-            player.order = i
         
         self.player_on_turn = 0
         self.steps_done = 0
@@ -428,8 +407,8 @@ class MonopolyEnv(gym.Env):
                 self.game_state[self.BUILDINGS][prop] = initial_build_state
                 self.game_state[self.PROPERTIES][prop] = -1 # Asumimos -1 para "sin dueño"
 
-    def render(self, mode='Human'):
-        if mode == 'Human':
+    def render(self, mode='human'):
+        if mode == 'human':
             board.draw(screen)
             # Pasamos game_state (la lista) a draw_players
             board.draw_players(screen, self.game_state, self.player_on_turn, self.dices, self.players)
@@ -444,8 +423,9 @@ class MonopolyEnv(gym.Env):
 
     ### NUEVO: Función para comprobar bancarrota (evita duplicar código) ###
     def _check_bankruptcy(self, player_id):
-        if self.game_state[self.MONEY][player_id] < 0 and not self.game_state[self.BANKRUPT][player_id]:
+        if self.game_state[self.MONEY][player_id] <= 0 and not self.game_state[self.BANKRUPT][player_id]:
             print(f"{self.players[player_id].name} entra en bancarrota.")
+            self.game_state[self.MONEY][player_id] = 0
             self.game_state[self.BANKRUPT][player_id] = True
             self.reset_properties(player_id)
             self.players[player_id].color = (0, 0, 0)
@@ -778,20 +758,17 @@ class MonopolyEnv(gym.Env):
         info = self._get_info()
         info["player_who_moved"] = player # Para el loop de training
         
-        if self.render_mode == 'Human':
+        if self.render_mode == 'human':
             self.render(self.render_mode)
             
         if terminated or truncated:
             print(f"Juego terminado. Steps: {self.steps_done}")
-            if self.render_mode == 'Human':
+            if self.render_mode == 'human':
                 self.close()
 
         return obs, reward, terminated, truncated, info
 
-    def star_order(self):
-        self.players = np.random.permutation(self.players)
-
     def close(self):
-        if self.render_mode == 'Human':
+        if self.render_mode == 'human':
             board.shut_down()
             pygame.quit()

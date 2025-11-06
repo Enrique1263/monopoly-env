@@ -5,7 +5,8 @@ import inspect
 from typing import Type
 import monopoly_env
 from player import Player
-import gym
+import gymnasium as gym
+import numpy as np
 
 def find_subclasses(path: str, cls: Type[Player]):
     """Find all subclasses of a given class in a given path.
@@ -36,10 +37,16 @@ def find_subclasses(path: str, cls: Type[Player]):
 
     return player_classes
 
+def star_order(players):
+    players = np.random.permutation(players)
+    for i, player in enumerate(players):
+        player.order = i
+    return players
+
 if __name__ == '__main__':
     players_classes = find_subclasses('agents', Player)
-    players = [clazz() for clazz in players_classes]
-    env = gym.make('MonopolyEnv-v0',players=players, render_mode='Human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards/chance.txt', hard_rules=False)
+    players = star_order([clazz() for clazz in players_classes])
+    env = gym.make('MonopolyEnv-v0',players=players, render_mode='human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards/chance.txt', hard_rules=False)
     observation, info = env.reset()
     
     done = False
@@ -47,7 +54,7 @@ if __name__ == '__main__':
         current_player_idx = info["player_on_turn"]
         current_game_state = info["game_state"]
 
-        action = env.players[current_player_idx].action(current_game_state)
+        action = players[current_player_idx].action(current_game_state)
 
         observation, reward, Terminated, Truncated, info = env.step(action)
         

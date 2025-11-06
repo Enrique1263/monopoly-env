@@ -1,6 +1,7 @@
-from gym.envs.registration import register
+from gymnasium.envs.registration import register
 
 register(
     id='MonopolyEnv-v0',
     entry_point='monopoly_env.envs.game:MonopolyEnv',
+    max_episode_steps=1000,
 )
