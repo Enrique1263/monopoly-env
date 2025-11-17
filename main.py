@@ -46,7 +46,7 @@ def star_order(players):
 if __name__ == '__main__':
     players_classes = find_subclasses('agents', Player)
     players = star_order([clazz() for clazz in players_classes])
-    env = gym.make('MonopolyEnv-v0',players=players, render_mode='human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards/chance.txt', hard_rules=False)
+    env = gym.make('MonopolyEnv-v0',players=players, render_mode='human', max_steps=1000, board_names_path='cards/f1_board_names.txt', community_chest_path='cards/f1_community_chest.txt', chance_path='cards/f1_chance.txt', hard_rules=False, image_path='cards/monopoly.png')
     observation, info = env.reset()
     
     done = False

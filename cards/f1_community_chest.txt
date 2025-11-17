@@ -1,0 +1,24 @@
+Advance to Go (Collect $200)|200|False|0
+FIA Software Error in your favor. Collect $200|200|False|0
+Physiotherapist Fees. Pay $50|50|False|0
+Profit from selling a used wing. Collect $50|50|False|0
+Get Out of Stewards Free Card|0|False|0
+Go to Stewards. Go directly to Stewards, do not pass Go, do not collect $200|0|False|30
+Sponsor Gala Night. Collect $50 from every player for suite entry|50|True|0
+Summer Holiday Fund matures. Receive $100|100|False|0
+Carbon Tax Refund. Collect $20|20|False|0
+It is your Team Principal's Birthday. Collect $10 from every player|10|True|0
+Your Life Insurance policy matures. Collect $100|100|False|0
+Workshop Fees. Pay $100|100|False|0
+Pay Wind Tunnel Fee of $50|50|False|0
+Receive $25 Helmet Royalty Fee|25|False|0
+Assessed for Damage Control. $40 per house. $115 per hotel|0|False|0
+You have won the Cleanest Driver Award. Collect $10|10|False|0
+You inherit a share package of the team. Receive $100|100|False|0
+Pay Team Medical Services of $75|75|False|0
+Collect $150 as a Season Finale Bonus|150|False|0
+Receive $50 for Simulator Services|50|False|0
+Pay $20 for each house and $100 for each hotel you own for maintenance|0|False|0
+Receive $100 from Merchandise Stock Sale|100|False|0
+Find $20 of Fallen Sponsorship. Collect $20|20|False|0
+Pay Engineer's Hospitalization Fee of $100|100|False|0

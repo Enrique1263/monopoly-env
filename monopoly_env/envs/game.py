@@ -24,17 +24,11 @@ BOARD_HEIGHT = 800
 NUM_CELLS = 10 # 10 celdas por lado
 NUM_BOARD_TILES = 40 # Número total de casillas en Monopoly
 
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Monopoly")
-# Pasamos NUM_CELLS (10) al constructor de Board
-board = Board(SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_WIDTH, BOARD_HEIGHT, NUM_CELLS)
-
 
 class MonopolyEnv(gym.Env):
     metadata = {'render_modes': ['human']}
 
-    def __init__(self, players: List[Player], max_steps=1000, render_mode='human', board_names_path='cards/board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards.txt', hard_rules=False):
+    def __init__(self, players: List[Player], max_steps=1000, render_mode='human', board_names_path='cards/board_names.txt', community_chest_path='cards/community_chest.txt', chance_path='cards.txt', hard_rules=False, image_path=None):
         
         self.num_players = len(players)
         self.hard_rules = hard_rules
@@ -151,6 +145,13 @@ class MonopolyEnv(gym.Env):
         self.on_double = False
         self.turns_on_double = 0
         self.dices = 0
+
+        if self.render_mode == 'human':
+            pygame.init()
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+            pygame.display.set_caption("Monopoly")
+            # Pasamos NUM_CELLS (10) al constructor de Board
+            self.board = Board(SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_WIDTH, BOARD_HEIGHT, NUM_CELLS, image_path)
 
     def load_board_names(self):
         board_names = {}
@@ -409,9 +410,9 @@ class MonopolyEnv(gym.Env):
 
     def render(self, mode='human'):
         if mode == 'human':
-            board.draw(screen)
+            self.board.draw(self.screen)
             # Pasamos game_state (la lista) a draw_players
-            board.draw_players(screen, self.game_state, self.player_on_turn, self.dices, self.players)
+            self.board.draw_players(self.screen, self.game_state, self.player_on_turn, self.dices, self.players)
             pygame.display.flip()
             time.sleep(0.01)
 
@@ -770,5 +771,5 @@ class MonopolyEnv(gym.Env):
 
     def close(self):
         if self.render_mode == 'human':
-            board.shut_down()
+            self.board.shut_down()
             pygame.quit()

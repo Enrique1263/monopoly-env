@@ -3,12 +3,26 @@ import numpy as np
 import time
 
 class Board:
-    def __init__(self, screen_width, screen_height, board_width, board_height, num_cells):
+    def __init__(self, screen_width, screen_height, board_width, board_height, num_cells, image_path=None):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.board_width = board_width
         self.board_height = board_height
         self.num_cells = num_cells
+
+        try:
+            original_image = pygame.image.load(image_path).convert() 
+            self.board_image = pygame.transform.scale(
+                original_image, (int(self.board_width), int(self.board_height))
+            )
+        except FileNotFoundError:
+            print(f"Error: No se encontró la imagen del tablero '{image_path}'. Se usará un fondo blanco.")
+            self.board_image = pygame.Surface((self.board_width, self.board_height))
+            self.board_image.fill((255, 255, 255))
+        except Exception as e:
+            print(f"Error al cargar la imagen del tablero: {e}. Se usará un fondo blanco.")
+            self.board_image = pygame.Surface((self.board_width, self.board_height))
+            self.board_image.fill((255, 255, 255))
 
         self.position_coordinates = np.array([None] * 4 * (self.num_cells))
         num_inner_cells = self.num_cells - 1 # 9
@@ -63,7 +77,7 @@ class Board:
     def draw(self, screen):
         # TODO: Improve the drawing of the board
         board_rect = pygame.Rect((self.screen_width - self.board_width) / 2, (self.screen_height - self.board_height) / 2, self.board_width, self.board_height)
-        pygame.draw.rect(screen, (255, 255, 255), board_rect)
+        screen.blit(self.board_image, board_rect.topleft)
 
         num_inner_cells = self.num_cells - 1
         cell_height = self.board_height / (num_inner_cells)

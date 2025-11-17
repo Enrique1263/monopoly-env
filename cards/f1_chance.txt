@@ -1,0 +1,21 @@
+Advance to Go (Collect $200)|200|False|0
+Advance to Circuit Gilles Villeneuve. If you pass Go, collect $200|200|False|37
+Advance to Abu Dhabi Grand Prix|0|False|39
+Advance to Interlagos Circuit. If you pass Go, collect $200|200|False|11
+Go back three spaces|0|False|0
+Go to Stewards. Go directly to Stewards, do not pass Go, do not collect $200|0|False|30
+Make major repairs on all your property. For each house pay $25. For each hotel pay $100|0|False|0
+Tire Puncture. Pay Repair Fee of $15|15|False|0
+Advance to Scuderia Ferrari HQ. If you pass Go, collect $200|200|False|5
+You have won the Time Trial. Collect $100|100|False|0
+You have been elected Chairman of the Drivers' Association. Pay each player $50|50|True|0
+Your Engine Upgrade loan matures. Receive $150|150|False|0
+Your Main Sponsor gives you a dividend of $50|50|False|0
+Get Out of Stewards Free Card|0|False|0
+Go back to Albert Park Circuit|0|False|1
+Advance to Red Bull Ring. If you pass Go, collect $200|200|False|13
+Pay your Super License Fee of $150|150|False|0
+Speeding fine in Pit Lane $15|15|False|0
+You have won a Prediction Competition. Collect $100|100|False|0
+Pay your Car Insurance of $50|50|False|0
+Sell your share in AlphaTauri. Collect $50|50|False|0
