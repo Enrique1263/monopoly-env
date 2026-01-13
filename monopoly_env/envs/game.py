@@ -150,7 +150,6 @@ class MonopolyEnv(gym.Env):
             pygame.init()
             self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
             pygame.display.set_caption("Monopoly")
-            # Pasamos NUM_CELLS (10) al constructor de Board
             self.board = Board(SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_WIDTH, BOARD_HEIGHT, NUM_CELLS, image_path)
 
     def load_board_names(self):
@@ -414,7 +413,7 @@ class MonopolyEnv(gym.Env):
             # Pasamos game_state (la lista) a draw_players
             self.board.draw_players(self.screen, self.game_state, self.player_on_turn, self.dices, self.players)
             pygame.display.flip()
-            time.sleep(0.01)
+            time.sleep(1)
 
     def _check_for_winner(self):
         players_active = [i for i, bankrupt in enumerate(self.game_state[self.BANKRUPT]) if not bankrupt]
@@ -430,6 +429,7 @@ class MonopolyEnv(gym.Env):
             self.game_state[self.BANKRUPT][player_id] = True
             self.reset_properties(player_id)
             self.players[player_id].color = (0, 0, 0)
+            self.on_double = False
             return True
         return False
 
@@ -602,64 +602,67 @@ class MonopolyEnv(gym.Env):
         
         event_bonus = 0.0
         terminal_reward = 0.0
+        reward = 0.0
+
+        terminated = False
+        truncated = False
+        position = self.game_state[self.POSITIONS][player]
         
         # Comprobamos si la acción es válida (usando la máscara)
         valid_mask = self._get_action_mask()
         if not valid_mask[action]:
             reward = -10.0 # Penalización por acción inválida
-            obs = self._get_obs()
-            info = self._get_info()
-            info["player_who_moved"] = player # Añadimos quién se equivocó
-            return obs, reward, False, False, info
-        
-        terminated = False
-        truncated = False
-        position = self.game_state[self.POSITIONS][player]
+        else:
+            if action == 0:
+                # "No-op" o "Pagar Fianza"
+                if self.game_state[self.JAIL_TURNS][player] > 0:
+                    self.game_state[self.MONEY][player] -= 50
+                    self.game_state[self.JAIL_TURNS][player] = 0
+                    event_bonus = -5.0 
+                
+            elif 1 <= action <= 40:
+                # "Edificar" en casilla (action - 1)
+                prop_idx = action - 1
+                cost = self.game_state[self.EDIFICATE][prop_idx // 10]
+                self.game_state[self.MONEY][player] -= cost
+                self.game_state[self.BUILDINGS][prop_idx] += 1
+                event_bonus = 1.0 
+                
+            # Omitido: 41-80 (Hipotecar)
 
-        if action == 0:
-            # "No-op" o "Pagar Fianza"
-            if self.game_state[self.JAIL_TURNS][player] > 0:
-                self.game_state[self.MONEY][player] -= 50
+            elif action == 41:
+                # "Comprar" propiedad actual (re-indexado desde 81)
+                # ¡¡CORREGIDO!!: Usamos el último valor para el precio
+                price = -self.game_state[self.PRICES][position][-1] # Precio es negativo
+                self.game_state[self.MONEY][player] -= price
+                self.game_state[self.PROPERTIES][position] = player
+                # Tu lógica original hacía +1 a -1, resultando en 0. Esto es equivalente.
+                self.game_state[self.BUILDINGS][position] = 0 # Nivel 0 (solo terreno)
+                event_bonus = 2.0 
+                
+                # TODO: Comprobar si esta compra completa un monopolio
+                # if self._check_monopoly(player, position):
+                #    event_bonus += 100.0 
+
+            elif action == 42:
+                # "Usar carta cárcel" (re-indexado desde 82)
+                self.game_state[self.GET_OUT_OF_JAIL][player] -= 1
                 self.game_state[self.JAIL_TURNS][player] = 0
-                event_bonus = -5.0 
-            
-        elif 1 <= action <= 40:
-            # "Edificar" en casilla (action - 1)
-            prop_idx = action - 1
-            cost = self.game_state[self.EDIFICATE][prop_idx // 10]
-            self.game_state[self.MONEY][player] -= cost
-            self.game_state[self.BUILDINGS][prop_idx] += 1
-            event_bonus = 10.0 
-            
-        # Omitido: 41-80 (Hipotecar)
+                event_bonus = 5.0 
 
-        elif action == 41:
-            # "Comprar" propiedad actual (re-indexado desde 81)
-            # ¡¡CORREGIDO!!: Usamos el último valor para el precio
-            price = -self.game_state[self.PRICES][position][-1] # Precio es negativo
-            self.game_state[self.MONEY][player] -= price
-            self.game_state[self.PROPERTIES][position] = player
-            # Tu lógica original hacía +1 a -1, resultando en 0. Esto es equivalente.
-            self.game_state[self.BUILDINGS][position] = 0 # Nivel 0 (solo terreno)
-            event_bonus = 20.0 
-            
-            # TODO: Comprobar si esta compra completa un monopolio
-            # if self._check_monopoly(player, position):
-            #    event_bonus += 100.0 
-
-        elif action == 42:
-            # "Usar carta cárcel" (re-indexado desde 82)
-            self.game_state[self.GET_OUT_OF_JAIL][player] -= 1
-            self.game_state[self.JAIL_TURNS][player] = 0
-            event_bonus = 5.0 
-            
-        # 2. Comprobamos bancarrota por la acción (ej. pagar fianza, edificar)
-        if self.game_state[self.MONEY][player] < 0:
-            print(f"{self.players[player].name} entra en bancarrota por su propia acción.")
-            # Usamos la nueva función
-            self._check_bankruptcy(player)
-            terminal_reward = -500.0 # Penalización MUY grande por bancarrota
-            # terminated = True
+            money_after = self.game_state[self.MONEY][player]
+            if money_after < 50:
+                event_bonus -= 5.0 # ¡Peligro de bancarrota!
+            elif money_after < 150:
+                event_bonus -= 1.0
+                
+            # 2. Comprobamos bancarrota por la acción (ej. pagar fianza, edificar)
+            if self.game_state[self.MONEY][player] < 0:
+                print(f"{self.players[player].name} entra en bancarrota por su propia acción.")
+                # Usamos la nueva función
+                self._check_bankruptcy(player)
+                terminal_reward = -500.0 # Penalización MUY grande por bancarrota
+                # terminated = True
 
 
         # 3. Avanzar turno
@@ -684,60 +687,66 @@ class MonopolyEnv(gym.Env):
                     self.player_on_turn = (self.player_on_turn + 1) % self.num_players
         
         
-        # 4. Tirar dados y mover al *siguiente* jugador
-        next_player = self.player_on_turn
-        
-        # Lógica de la cárcel para el siguiente jugador
-        if self.game_state[self.JAIL_TURNS][next_player] > 0:
-            dices, dobles = self.roll_dice()
-            self.dices = dices
-            self.on_double = dobles
-            if dobles:
-                self.game_state[self.JAIL_TURNS][next_player] = 0
-                self.on_double = False 
-                print(f"{self.players[next_player].name} saca dobles y sale de la cárcel.")
-            else:
-                self.game_state[self.JAIL_TURNS][next_player] -= 1
-                if self.game_state[self.JAIL_TURNS][next_player] == 0:
-                    print(f"{self.players[next_player].name} falla dados, paga fianza (auto).")
-                    self.game_state[self.MONEY][next_player] -= 50
-                    self._check_bankruptcy(next_player) # Usamos la nueva función
-                else:
-                    print(f"{self.players[next_player].name} falla dados, sigue en cárcel.")
-                    self.on_double = False 
-                    self.player_on_turn = (self.player_on_turn + 1) % self.num_players
-                    while self.game_state[self.BANKRUPT][self.player_on_turn]:
-                        self.player_on_turn = (self.player_on_turn + 1) % self.num_players
-        
-        # Lógica de movimiento normal (si no está o acaba de salir de la cárcel)
-        if self.game_state[self.JAIL_TURNS][next_player] == 0 and not terminated:
-            dices, dobles = self.roll_dice()
-            self.dices = dices
-            self.on_double = dobles
-            
-            old_pos = self.game_state[self.POSITIONS][next_player]
-            new_pos = (old_pos + dices) % NUM_BOARD_TILES
-            self.game_state[self.POSITIONS][next_player] = new_pos
-            
-            if new_pos < old_pos: # Pasar por GO
-                self.game_state[self.MONEY][next_player] += 200
-
-            # 5. Resolver caída en casilla (pagar alquileres, etc.)
-            print(f'{self.players[next_player].name} landed on {self.board_names[new_pos]}')
-            self._resolve_land_on_tile(next_player)
-            
-            # La bancarrota ya se comprueba dentro de _resolve_land_on_tile
-            # if self.game_state[self.BANKRUPT][next_player]:
-            #     terminated = True
-        
-        
-        # 6. Comprobar si hay un ganador
+        # 4. Comprobar si hay un ganador
         winner = self._check_for_winner()
         if winner != -1:
             print(f"¡El ganador es {self.players[winner].name}!")
             terminated = True
             if winner == player:
                 terminal_reward = 1000.0 # Recompensa ENORME por ganar
+        else:
+            # 5. Tirar dados y mover al *siguiente* jugador
+            next_player = self.player_on_turn
+            
+            # Lógica de la cárcel para el siguiente jugador
+            if self.game_state[self.JAIL_TURNS][next_player] > 0:
+                dices, dobles = self.roll_dice()
+                self.dices = dices
+                self.on_double = dobles
+                if dobles:
+                    self.game_state[self.JAIL_TURNS][next_player] = 0
+                    self.on_double = False 
+                    print(f"{self.players[next_player].name} saca dobles y sale de la cárcel.")
+                else:
+                    self.game_state[self.JAIL_TURNS][next_player] -= 1
+                    if self.game_state[self.JAIL_TURNS][next_player] == 0:
+                        print(f"{self.players[next_player].name} falla dados, paga fianza (auto).")
+                        self.game_state[self.MONEY][next_player] -= 50
+                        self._check_bankruptcy(next_player) # Usamos la nueva función
+                    else:
+                        print(f"{self.players[next_player].name} falla dados, sigue en cárcel.")
+                        self.on_double = False 
+                        self.player_on_turn = (self.player_on_turn + 1) % self.num_players
+                        while self.game_state[self.BANKRUPT][self.player_on_turn]:
+                            self.player_on_turn = (self.player_on_turn + 1) % self.num_players
+            
+            # Lógica de movimiento normal (si no está o acaba de salir de la cárcel)
+            if self.game_state[self.JAIL_TURNS][next_player] == 0 and not terminated:
+                dices, dobles = self.roll_dice()
+                self.dices = dices
+                self.on_double = dobles
+                
+                old_pos = self.game_state[self.POSITIONS][next_player]
+                new_pos = (old_pos + dices) % NUM_BOARD_TILES
+                self.game_state[self.POSITIONS][next_player] = new_pos
+                
+                if new_pos < old_pos: # Pasar por GO
+                    self.game_state[self.MONEY][next_player] += 200
+
+                # 5. Resolver caída en casilla (pagar alquileres, etc.)
+                print(f'{self.players[next_player].name} landed on {self.board_names[new_pos]}')
+                self._resolve_land_on_tile(next_player)
+                
+                # La bancarrota ya se comprueba dentro de _resolve_land_on_tile
+                # if self.game_state[self.BANKRUPT][next_player]:
+                #     terminated = True
+            
+            winner = self._check_for_winner()
+            if winner != -1:
+                print(f"¡El ganador es {self.players[winner].name}!")
+                terminated = True
+                if winner == player:
+                    terminal_reward = 1000.0 # Recompensa ENORME por ganar
             
         # 7. Comprobar max_steps
         self.steps_done += 1
@@ -749,7 +758,7 @@ class MonopolyEnv(gym.Env):
         
         # --- ¡RECOMPENSA FINAL! ---
         delta_net_worth = net_worth_after - net_worth_before
-        reward = (delta_net_worth / 100.0) + event_bonus + terminal_reward
+        reward = (delta_net_worth / 100.0) + event_bonus + terminal_reward if reward == 0.0 else reward
         
         # 9. Actualizar el net worth almacenado
         self.net_worths[player] = net_worth_after
