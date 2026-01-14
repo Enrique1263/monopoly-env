@@ -1,0 +1,2 @@
+All codes that are used for training and analysis of models are stored in this folder.
+Reminder that in order to import the monopoly environment, you need to have the file at the same level as the monopoly_env folder.
