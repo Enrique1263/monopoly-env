@@ -53,8 +53,9 @@ if __name__ == '__main__':
     while not done:
         current_player_idx = info["player_on_turn"]
         current_game_state = info["game_state"]
+        action_mask = info["action_mask"]
 
-        action = players[current_player_idx].action(current_game_state)
+        action = players[current_player_idx].action(current_game_state, action_mask=action_mask)
 
         observation, reward, Terminated, Truncated, info = env.step(action)
         
